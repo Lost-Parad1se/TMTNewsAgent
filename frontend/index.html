@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TMTNewsAgent Research Workbench</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">TMTNewsAgent</p>
+          <h1>公众号新闻行研工作台</h1>
+        </div>
+        <div class="topbar-meta">
+          <span class="status-dot"></span>
+          <span>生成 Markdown 投研报告</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="control-panel" aria-label="研究参数">
+          <section class="panel-section">
+            <label for="topic">报告主题</label>
+            <input
+              id="topic"
+              type="text"
+              value="英伟达、谷歌近期公众号新闻"
+              data-testid="topic-input"
+            />
+          </section>
+
+          <section class="panel-section">
+            <label for="keywords">公司/关键词</label>
+            <textarea id="keywords" rows="4" data-testid="keywords-input">英伟达
+NVIDIA
+谷歌
+Google
+Gemini
+AI算力</textarea>
+          </section>
+
+          <section class="grid-two">
+            <div class="panel-section">
+              <label for="days">时间窗口</label>
+              <div class="input-with-unit">
+                <input id="days" type="number" min="1" max="30" value="3" />
+                <span>天内</span>
+              </div>
+            </div>
+            <div class="panel-section">
+              <label for="maxResults">结果上限</label>
+              <input id="maxResults" type="number" min="1" max="20" value="5" />
+            </div>
+          </section>
+
+          <section class="panel-section">
+            <label>信息来源</label>
+            <div class="segmented" role="group" aria-label="信息来源">
+              <button type="button" class="segment active" data-source="manual_url">
+                手动 URL
+              </button>
+              <button type="button" class="segment" data-source="search">
+                授权搜索
+              </button>
+              <button type="button" class="segment" data-source="browser_history">
+                本地历史
+              </button>
+            </div>
+          </section>
+
+          <section class="panel-section" id="manualUrlSection">
+            <label for="urls">公众号/公开文章 URL</label>
+            <textarea
+              id="urls"
+              rows="6"
+              placeholder="每行一个 URL，例如 https://mp.weixin.qq.com/s?__biz=..."
+              data-testid="urls-input"
+            ></textarea>
+          </section>
+
+          <section class="panel-section hidden" id="searchSection">
+            <label for="searchProvider">授权搜索 provider</label>
+            <select id="searchProvider">
+              <option value="tavily">Tavily Search API</option>
+              <option value="bing">Bing Web Search API</option>
+            </select>
+            <p class="hint">
+              推荐配置 TAVILY_API_KEY。查询会聚焦 site:mp.weixin.qq.com/s。
+            </p>
+          </section>
+
+          <section class="panel-section hidden" id="historySection">
+            <label for="browser">浏览器历史来源</label>
+            <select id="browser">
+              <option value="all">Chrome + Edge</option>
+              <option value="chrome">Chrome</option>
+              <option value="edge">Edge</option>
+            </select>
+            <label class="check-row">
+              <input id="enableHistory" type="checkbox" />
+              <span>显式允许读取本地匹配历史</span>
+            </label>
+          </section>
+
+          <section class="panel-section">
+            <label for="llmProvider">基座模型</label>
+            <select id="llmProvider">
+              <option value="mock">MockLLM：无 key 演示</option>
+              <option value="gemini">Gemini</option>
+              <option value="qwen">Qwen / 阿里云百炼</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="glm">GLM / 智谱</option>
+              <option value="openai-compatible">自定义 OpenAI-compatible</option>
+            </select>
+            <p class="hint">API Key 放在 .env 中，前端只切换 provider，不传输密钥。</p>
+          </section>
+
+          <section class="panel-section">
+            <label for="strategy">网页读取策略</label>
+            <select id="strategy">
+              <option value="auto">auto：自动选择</option>
+              <option value="static">static：静态请求</option>
+              <option value="jina">jina：Reader Markdown</option>
+              <option value="manual">manual：手动兜底</option>
+            </select>
+            <label class="check-row">
+              <input id="enableCdp" type="checkbox" />
+              <span>允许本地 CDP 辅助读取</span>
+            </label>
+          </section>
+
+          <button id="runButton" class="primary-action" type="button" data-testid="run-button">
+            生成 Markdown 报告
+          </button>
+        </aside>
+
+        <section class="result-panel" aria-live="polite">
+          <div class="result-header">
+            <div>
+              <p class="eyebrow">Report Preview</p>
+              <h2>Markdown 报告预览</h2>
+            </div>
+            <div class="result-actions">
+              <a id="serverDownload" class="secondary-action disabled" href="#" download>
+                服务端文件
+              </a>
+              <button id="clientDownload" class="secondary-action" type="button" disabled>
+                下载当前 .md
+              </button>
+            </div>
+          </div>
+
+          <div class="status-band" id="statusBand">
+            <div>
+              <span class="status-label">状态</span>
+              <strong id="statusText">等待输入</strong>
+            </div>
+            <div>
+              <span class="status-label">来源</span>
+              <strong id="sourceText">手动 URL</strong>
+            </div>
+            <div>
+              <span class="status-label">窗口</span>
+              <strong id="windowText">3 天内</strong>
+            </div>
+          </div>
+
+          <div class="notice-list" id="noticeList"></div>
+
+          <div class="summary-grid">
+            <div>
+              <span class="metric-label">采集</span>
+              <strong id="collectedMetric">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">入简报</span>
+              <strong id="summarizedMetric">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">需手动</span>
+              <strong id="manualMetric">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">失败项</span>
+              <strong id="failedMetric">0</strong>
+            </div>
+          </div>
+
+          <pre id="markdownPreview" class="markdown-preview">生成后，Markdown 会显示在这里。你可以直接下载 .md，或打开 data/outputs 中的服务端文件。</pre>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

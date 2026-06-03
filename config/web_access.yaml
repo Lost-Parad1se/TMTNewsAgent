@@ -1,0 +1,15 @@
+web_access:
+  strategy: "auto"
+  enable_cdp: false
+  enable_browser_history: false
+  cdp_proxy_url: "http://localhost:3456"
+  timeout_seconds: 15
+  jina_timeout_seconds: 20
+  jina_base_url: "https://r.jina.ai/"
+  max_urls_per_run: 20
+  max_concurrency: 1
+  max_browser_history_results: 20
+  user_agent: "TMTNewsAgent/0.1 (+public information research prototype)"
+  compliance_note: >
+    Use only public or user-authorized access paths. Do not bypass login,
+    captcha, anti-bot controls, paywalls, or platform access restrictions.

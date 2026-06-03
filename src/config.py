@@ -15,8 +15,10 @@ class AppConfig(BaseModel):
 
     project_root: Path
     sources: Dict[str, Any] = Field(default_factory=dict)
+    web_access: Dict[str, Any] = Field(default_factory=dict)
     topics: Dict[str, Any] = Field(default_factory=dict)
     prompts: Dict[str, Any] = Field(default_factory=dict)
+    llm_provider: str = "mock"
     llm_base_url: Optional[str] = None
     llm_api_key: Optional[str] = None
     llm_model: str = "mock-model"
@@ -62,8 +64,10 @@ def load_config(project_root: Optional[Path] = None) -> AppConfig:
     return AppConfig(
         project_root=root,
         sources=_read_yaml(root / "config" / "sources.yaml"),
+        web_access=_read_yaml(root / "config" / "web_access.yaml").get("web_access", {}),
         topics=_read_yaml(root / "config" / "topics.yaml"),
         prompts=_read_yaml(root / "config" / "prompts.yaml"),
+        llm_provider=os.getenv("LLM_PROVIDER", "mock"),
         llm_base_url=os.getenv("LLM_BASE_URL"),
         llm_api_key=os.getenv("LLM_API_KEY"),
         llm_model=os.getenv("LLM_MODEL", "mock-model"),

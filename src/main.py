@@ -10,8 +10,7 @@ from src.collectors.manual_url_collector import ManualURLCollector
 from src.collectors.search_collector import SearchCollector
 from src.config import AppConfig, load_config
 from src.extractors.html_cleaner import HTMLCleaner
-from src.llm.mock_llm import MockLLMClient
-from src.llm.openai_compatible import OpenAICompatibleClient
+from src.llm.factory import build_llm_client
 from src.models import ArticleProcessed, ArticleRaw, PipelineReport, model_to_dict
 from src.processors.classifier import build_classifier_from_config
 from src.processors.deduplicator import Deduplicator
@@ -23,6 +22,8 @@ from src.storage.sqlite_store import SQLiteStore
 from src.utils.logger import get_logger
 from src.utils.text_utils import clean_whitespace, stable_article_id
 from src.utils.time_utils import today_str
+from src.web_access.browser_history_collector import BrowserHistoryCollector
+from src.web_access.strategy_router import WebAccessLayer
 
 
 class NewsResearchAgent:
@@ -40,6 +41,7 @@ class NewsResearchAgent:
         self.report_writer = ReportWriter()
         self.file_store = FileStore(self.config.output_dir)
         self.sqlite_store = SQLiteStore(self.config.sqlite_path)
+        self.web_access_layer = WebAccessLayer(self.config.web_access)
         self.summarizer = ArticleSummarizer(
             llm_client=self._build_llm_client(),
             prompt_template=self.config.prompts.get("single_article_summary", "{text}"),
@@ -53,15 +55,45 @@ class NewsResearchAgent:
         urls: Optional[Iterable[str]] = None,
         csv_path: Optional[str | Path] = None,
         date: Optional[str] = None,
+        web_access_strategy: Optional[str] = None,
+        enable_cdp: bool = False,
+        enable_browser_history: bool = False,
+        browser: str = "all",
+        since: str = "7d",
+        max_browser_history_results: int = 20,
+        search_site_filter: Optional[str] = None,
+        search_recent_days: int = 7,
+        max_search_results: int = 5,
     ) -> Dict[str, Any]:
         """Run the complete collect-process-summarize-report pipeline."""
 
+        self._apply_web_access_runtime_options(
+            strategy=web_access_strategy,
+            enable_cdp=enable_cdp,
+            enable_browser_history=enable_browser_history,
+            browser=browser,
+            since=since,
+            max_browser_history_results=max_browser_history_results,
+        )
         run_date = date or today_str()
         report = PipelineReport()
         self.logger.info("Starting pipeline mode=%s topic=%s date=%s", mode, topic, run_date)
 
-        raw_articles = self._collect(mode, keywords=keywords, urls=urls, csv_path=csv_path)
+        raw_articles = self._collect(
+            mode,
+            keywords=keywords,
+            urls=urls,
+            csv_path=csv_path,
+            browser=browser,
+            since=since,
+            enable_browser_history=enable_browser_history,
+            max_browser_history_results=max_browser_history_results,
+            search_site_filter=search_site_filter,
+            search_recent_days=search_recent_days,
+            max_search_results=max_search_results,
+        )
         report.collected_count = len(raw_articles)
+        self._apply_fetch_report(raw_articles, report)
         for article in raw_articles:
             self.sqlite_store.save_raw_article(article)
 
@@ -125,6 +157,13 @@ class NewsResearchAgent:
         keywords: Optional[Iterable[str]],
         urls: Optional[Iterable[str]],
         csv_path: Optional[str | Path],
+        browser: str = "all",
+        since: str = "7d",
+        enable_browser_history: bool = False,
+        max_browser_history_results: int = 20,
+        search_site_filter: Optional[str] = None,
+        search_recent_days: int = 7,
+        max_search_results: int = 5,
     ) -> List[ArticleRaw]:
         """Collect raw articles according to the selected input mode."""
 
@@ -139,11 +178,62 @@ class NewsResearchAgent:
             return CSVCollector(path).collect()
         if mode == "manual_url":
             max_urls = self.config.sources.get("request_policy", {}).get("max_urls_per_run", 20)
-            return ManualURLCollector(urls or [], max_urls=max_urls).collect()
+            max_urls = int(self.config.web_access.get("max_urls_per_run", max_urls))
+            return ManualURLCollector(
+                urls or [],
+                web_access_layer=self.web_access_layer,
+                max_urls=max_urls,
+            ).collect()
         if mode == "search":
             provider = self.config.sources.get("search", {}).get("provider", "mock")
-            return SearchCollector(keywords or [], provider=provider).collect()
+            return SearchCollector(
+                keywords or [],
+                provider=provider,
+                web_access_layer=self.web_access_layer,
+                site_filter=search_site_filter,
+                recent_days=search_recent_days,
+                max_results=max_search_results,
+            ).collect()
+        if mode == "browser_history":
+            return BrowserHistoryCollector(
+                keywords=keywords or [],
+                since=since,
+                browser=browser,
+                limit=max_browser_history_results,
+                enabled=enable_browser_history,
+            ).collect()
         raise ValueError(f"Unsupported mode: {mode}")
+
+    def _apply_web_access_runtime_options(
+        self,
+        strategy: Optional[str],
+        enable_cdp: bool,
+        enable_browser_history: bool,
+        browser: str,
+        since: str,
+        max_browser_history_results: int,
+    ) -> None:
+        """Merge CLI/API runtime flags into the optional web access config."""
+
+        if strategy:
+            self.config.web_access["strategy"] = strategy
+        if enable_cdp:
+            self.config.web_access["enable_cdp"] = True
+        if enable_browser_history:
+            self.config.web_access["enable_browser_history"] = True
+        self.config.web_access["browser"] = browser
+        self.config.web_access["since"] = since
+        self.config.web_access["max_browser_history_results"] = max_browser_history_results
+        self.web_access_layer = WebAccessLayer(self.config.web_access)
+
+    def _apply_fetch_report(self, raw_articles: List[ArticleRaw], report: PipelineReport) -> None:
+        """Populate fetch strategy counters and fetch failure details."""
+
+        summary = WebAccessLayer.summarize_results(raw_articles)
+        report.fetch_strategy_stats = summary["fetch_strategy_stats"]
+        report.cdp_used_count = summary["cdp_used_count"]
+        report.manual_required_count = summary["manual_required_count"]
+        report.failed_fetch_items = summary["failed_fetch_items"]
 
     def _extract_and_clean(
         self, raw_articles: List[ArticleRaw], report: PipelineReport
@@ -154,7 +244,7 @@ class NewsResearchAgent:
         cleaned: List[ArticleRaw] = []
         for article in raw_articles:
             try:
-                if article.fetch_status != "success":
+                if article.fetch_status not in {"success", "partial"}:
                     report.failed_items.append(
                         {
                             "title": article.title,
@@ -265,12 +355,4 @@ class NewsResearchAgent:
     def _build_llm_client(self):
         """Build a real LLM client when a key is configured, otherwise use MockLLM."""
 
-        if self.config.llm_api_key and self.config.llm_base_url:
-            self.logger.info("Using OpenAI-compatible LLM model=%s", self.config.llm_model)
-            return OpenAICompatibleClient(
-                base_url=self.config.llm_base_url,
-                api_key=self.config.llm_api_key,
-                model=self.config.llm_model,
-            )
-        self.logger.info("No LLM_API_KEY configured; using MockLLMClient")
-        return MockLLMClient()
+        return build_llm_client(self.config)

@@ -15,3 +15,7 @@ venv/
 
 .DS_Store
 *.log
+
+# Runtime-generated research outputs. Existing tracked samples stay tracked.
+data/outputs/brief_*.md
+data/outputs/brief_*.json

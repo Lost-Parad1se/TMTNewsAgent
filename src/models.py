@@ -12,6 +12,7 @@ class ArticleRaw(BaseModel):
 
     source_type: str
     url: Optional[str] = None
+    final_url: Optional[str] = None
     title: str
     author: Optional[str] = None
     publish_time: Optional[str] = None
@@ -20,6 +21,8 @@ class ArticleRaw(BaseModel):
     raw_text: Optional[str] = None
     fetched_at: str
     fetch_status: str = "success"
+    fetch_strategy: Optional[str] = None
+    fetch_metadata: Dict[str, Any] = Field(default_factory=dict)
     error_message: Optional[str] = None
     quality_flags: List[str] = Field(default_factory=list)
 
@@ -87,6 +90,10 @@ class PipelineReport(BaseModel):
     extracted_count: int = 0
     deduplicated_count: int = 0
     summarized_count: int = 0
+    fetch_strategy_stats: Dict[str, int] = Field(default_factory=dict)
+    cdp_used_count: int = 0
+    manual_required_count: int = 0
+    failed_fetch_items: List[Dict[str, Any]] = Field(default_factory=list)
     failed_items: List[Dict[str, Any]] = Field(default_factory=list)
     output_files: Dict[str, str] = Field(default_factory=dict)
 
