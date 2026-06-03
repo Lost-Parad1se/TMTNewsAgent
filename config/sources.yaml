@@ -1,0 +1,26 @@
+manual_url:
+  enabled: true
+  description: "Public article URLs manually provided by the user."
+csv:
+  enabled: true
+  default_path: "data/raw/articles.csv"
+  supported_columns:
+    - title
+    - url
+    - account_name
+    - publish_time
+    - raw_text
+search:
+  enabled: true
+  provider: "mock"
+  adapters:
+    - tavily
+    - serpapi
+    - bing
+    - sogou_wechat
+    - third_party_wechat_data_api
+  compliance_note: "Use authorized public-search or licensed data APIs in production."
+request_policy:
+  timeout_seconds: 15
+  max_urls_per_run: 20
+  user_agent: "TMTNewsAgent/0.1 (+public information research prototype)"

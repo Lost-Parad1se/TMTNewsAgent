@@ -1,0 +1,20 @@
+{
+  "collected_count": 5,
+  "extracted_count": 5,
+  "deduplicated_count": 5,
+  "summarized_count": 5,
+  "failed_items": [],
+  "output_files": {
+    "brief_markdown_path": "D:\\LLM-AI\\NewsAgent\\TMTNewsAgent\\data\\outputs\\brief_2026-06-03_AI算力与互联网平台动态.md",
+    "brief_json_path": "D:\\LLM-AI\\NewsAgent\\TMTNewsAgent\\data\\outputs\\brief_2026-06-03_AI算力与互联网平台动态.json",
+    "pipeline_report_path": "D:\\LLM-AI\\NewsAgent\\TMTNewsAgent\\data\\outputs\\pipeline_report.json",
+    "sqlite_path": "D:\\LLM-AI\\NewsAgent\\TMTNewsAgent\\data\\processed\\tmt_news_agent.db"
+  },
+  "dedup_report": {
+    "input_count": 5,
+    "unique_count": 5,
+    "duplicate_count": 0,
+    "title_similarity_threshold": 0.9
+  },
+  "duplicate_groups": []
+}

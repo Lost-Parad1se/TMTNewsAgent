@@ -1,0 +1,26 @@
+single_article_summary: |
+  请把以下公众号文章或公开新闻材料整理成券商研究所互联网/TMT行业投研摘要，并输出 JSON。
+
+  输出字段：
+  {
+    "one_sentence_summary": "...",
+    "key_points": ["...", "..."],
+    "related_companies": ["..."],
+    "related_topics": ["..."],
+    "investment_implications": ["..."],
+    "risks": ["..."],
+    "importance_score": 0,
+    "sentiment": "positive/neutral/negative/mixed"
+  }
+
+  写作要求：
+  - 不要写成自媒体口吻。
+  - 不要夸张。
+  - 像研究助理给分析师整理晨会材料。
+  - 区分事实、判断、推测。
+  - 对未经验证的信息标注“需进一步验证”。
+
+  标题：{title}
+  来源：{account_name}
+  正文：
+  {text}
