@@ -51,6 +51,14 @@ PROVIDER_SPECS: Dict[str, LLMProviderSpec] = {
         default_model="glm-5.1",
         notes="智谱 AI OpenAI 兼容接口。",
     ),
+    "kimi": LLMProviderSpec(
+        name="kimi",
+        display_name="Kimi / Moonshot",
+        env_key="MOONSHOT_API_KEY",
+        base_url="https://api.moonshot.cn/v1",
+        default_model="moonshot-v1-8k",
+        notes="月之暗面 Kimi OpenAI 兼容接口。",
+    ),
     "openai-compatible": LLMProviderSpec(
         name="openai-compatible",
         display_name="Custom OpenAI-compatible",
@@ -72,6 +80,9 @@ ALIASES = {
     "zhipu": "glm",
     "zhipuai": "glm",
     "bigmodel": "glm",
+    "moonshot": "kimi",
+    "moonshot-ai": "kimi",
+    "moonshotai": "kimi",
 }
 
 

@@ -33,11 +33,12 @@ class LLMFactoryTest(unittest.TestCase):
             runtime.base_url,
         )
 
-    def test_qwen_deepseek_and_glm_defaults_are_resolved(self):
+    def test_qwen_deepseek_glm_and_kimi_defaults_are_resolved(self):
         cases = [
             ("qwen", "DASHSCOPE_API_KEY", "qwen-plus"),
             ("deepseek", "DEEPSEEK_API_KEY", "deepseek-v4-flash"),
             ("glm", "ZHIPUAI_API_KEY", "glm-5.1"),
+            ("kimi", "MOONSHOT_API_KEY", "moonshot-v1-8k"),
         ]
         for provider, env_key, model in cases:
             with self.subTest(provider=provider):
